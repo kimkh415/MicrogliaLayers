@@ -1,4 +1,4 @@
-.libPaths(.libPaths()[2])
+# This code was run on R v4.0.3
 
 library(lme4)
 library(dplyr)
@@ -16,36 +16,26 @@ library(lmerTest)
 dat <- readRDS("mg_density_WTonly.rds")
 
 # test difference by layer(Region)
-# singular model -> remove image
-#fit1=lmer(y~layer+age+(1|mouse)+(1|image),data=dat)
-#fit2=lmer(y~ age+(1|mouse)+(1|image),data=dat)
 fit1=lmer(y~layer+age+(1|mouse),data=dat)
 fit2=lmer(y~ age+(1|mouse),data=dat)
 anov=anova(fit1,fit2,test="LRT")
-saveRDS(anov, "anova_lmer_noImage_res_WTonly_diff_bet_layer.rds")
+saveRDS(anov, "anova_lmer_res_WTonly_diff_bet_layer.rds")
 
-
-#dat %>% group_by(age, layer) %>% summarise(mean=mean(y), sd=sd(y), var=var(y))
-
-
+# Within each time point, test layer as fixed effect
 mg.layer=c()
 for (a in levels(dat$age)) {
 sdat = dat %>% filter(age==a)
 print(table(sdat$age))
 fit1=lmer(y~layer+(1|image),data=sdat)
-#fit1=lm(y~layer+mouse+image,data=sdat)
 res = summary(fit1)
-#f = res$fstatistic
-#pval = pf(f[1],f[2],f[3],lower.tail=F)
 pval = res$coefficients[2,5]
 mg.layer=c(mg.layer, pval)
-saveRDS(res, paste0("lmerTest_summary_lmer_noMouse_WTonly_mgDensity_diff_bet_layer_", a, ".rds"))
+saveRDS(res, paste0("lmerTest_summary_lmer_WTonly_mgDensity_diff_bet_layer_", a, ".rds"))
 }
 names(mg.layer)=levels(dat$age)
 mg.layer
 
-
-
+# within each layer, test age as fixed effect
 for(a in levels(dat$layer)) {
 sdat = dat %>% filter(layer==a)
 fit1 = lmer(y~age+(1|mouse), data=sdat)

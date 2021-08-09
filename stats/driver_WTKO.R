@@ -1,4 +1,4 @@
-.libPaths(.libPaths()[2])
+# This code was run on R v4.0.3
 
 library(lme4)
 library(dplyr)
@@ -32,7 +32,6 @@ ssdat = sdat %>% filter(layer==l)
 print(table(ssdat$age))
 print(table(ssdat$layer))
 fit1=lmer(y~genotype+(1|mouse),data=ssdat)
-#fit2=lmer(y~(1|mouse),data=ssdat)
 lname = gsub(" |-", "_", l)
 res = summary(fit1)
 mg.genotype = c(mg.genotype, res$coefficients[2,"Pr(>|t|)"])
@@ -41,10 +40,6 @@ saveRDS(res, paste0("lmerTest_summary_lmer_mgDensity_diff_by_genotype_", a, lnam
 }
 names(mg.genotype) <- rep(levels(dat$age), each=nlevels(dat$layer))
 names(mg.genotype) <- paste0(names(mg.genotype), rep(levels(dat$layer), times=nlevels(dat$age)))
-
-
-
-
 
 # Difference between upper and lower layer
 # in individual genotype
@@ -55,13 +50,9 @@ for (gt in levels(dat$genotype)) {
 ssdat = sdat %>% filter(genotype==gt)
 print(table(ssdat$age))
 print(table(ssdat$genotype))
-#fit1=lmer(y~layer+(1|mouse)+(1|image),data=ssdat)
 fit1=lmer(y~layer+(1|image),data=ssdat)
-#fit1=lm(y~layer+mouse+image,data=ssdat)
 gtname = gsub(" |-", "_", gt)
 res = summary(fit1)
-#f = res$fstatistic
-#pval = pf(f[1],f[2],f[3],lower.tail=F)
 pval = res$coefficients[2,5]
 mg.layer = c(mg.layer, pval)
 saveRDS(res, paste0("lmerTest_summary_lmer_noMouse_mgDensity_diff_by_layer_", a, gtname, ".rds"))
@@ -87,4 +78,6 @@ names(ret)=levels(dat$age)
 ret.padj = p.adjust(ret, method="BH")
 print(ret.padj)
 write.table(ret.padj,file="mg_density_in_layers_by_genotype_lmm_anova_pvals.tsv",sep="\t",quote=F,row.names=T)
+
+
 

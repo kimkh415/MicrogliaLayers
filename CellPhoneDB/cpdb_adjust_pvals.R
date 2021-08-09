@@ -1,12 +1,11 @@
+# Adjust p values from CellphoneDB result
 library(reshape2)
 library(stringr)
 
+
+# path to a directory containing CellphoneDB result
 args = commandArgs(trailingOnly=T)
 res_path = args[1]
-
-if (endsWith(res_path, '/')) {
-res_path = sub('/$', '', res_path)
-}
 
 pval_file = file.path(res_path, "pvalues.txt")
 means_file = file.path(res_path, "means.txt")
@@ -14,7 +13,6 @@ if (!all(sapply(c(pval_file, means_file), FUN=file.exists))) {
 print("check input file names.")
 q()
 }
-
 
 # Load CPDB output
 pval = read.table(pval_file, sep='\t', header=T)

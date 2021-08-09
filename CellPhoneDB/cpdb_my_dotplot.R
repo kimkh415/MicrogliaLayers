@@ -41,7 +41,6 @@ dot_plot = function(selected_rows = NULL,
   pval[pval<pval_threshold] = pval_threshold
   plot.data = cbind(df_names,pval)
   pr = unlist(as.data.frame(sel_means))
-  #pr[pr==0] = 1
   plot.data = cbind(plot.data,log2(pr+1))
   colnames(plot.data) = c('pair', 'clusters', 'pvalue', 'mean')
 

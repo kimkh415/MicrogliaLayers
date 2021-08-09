@@ -3,6 +3,7 @@ library(stringr)
 options(stringsAsFactors=FALSE)
 
 
+# Rename cluster names to have no special characters and spaces
 CleanClusterNames <- function(seur) {
 a <- levels(seur)
 newA <- str_replace_all(a, "[ :/]", "_")
@@ -10,7 +11,7 @@ names(newA) <- a
 return(RenameIdents(seur, newA))
 }
 
-
+# Convert mouse gene name to human Ensembl ids
 mouse2human <- function(mgenes, getID=F)
 {
 require(biomaRt)
@@ -27,15 +28,16 @@ return(hgenes)
 }
 
 
-outdir <- "/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/cpdb"
+args = commandArgs(trailingOnly=T)
+
+outdir <- args[1]
 
 print("Import data!")
-mg <- readRDS("~/microglia/paper/seur_P14_final_030221.rds")
-mgwtko <- readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/Fezf2_WTKO_scRNA/remove_mito_ribo_genes/seur_final_Fezf2_WTKO_SCT_annotated.rds")
+mg <- readRDS(args[2])
+mgwtko <- readRDS(args[3])
 mgko <- subset(mgwtko, Treat=='KO')
 mgwt <- subset(mgwtko, Treat=='WT')
-obj.n <- readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/data/fezf2_wt_ko/ex_neuron/subset_ExN/seur_sct_ExN_subset_clustered.rds")
-Idents(obj.n) <- readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/data/fezf2_wt_ko/ex_neuron/subset_ExN/metadata_ExNs_FinalSubtypeAssignments.rds")
+obj.n <- readRDS(args[4])
 
 # Select cell types to run interaction analysis with
 print("Prepping data!")
@@ -46,7 +48,7 @@ mgko <- subset(mgko, idents=c("Homeostatic1","Homeostatic2"))
 nwt = subset(obj.n, Genotype=="WT")
 nko = subset(obj.n, Genotype=="KO")
 nwt = subset(nwt, idents=levels(nwt)[grep("KO", levels(nwt), invert=T)])  # exclude KO Mismatch 1 and 2
-nko = subset(nko, idents=setdiff(levels(nko), c('L5 CPN 2','L5 CStrPN','L6b Subplate')))  # exclude these with 14, 5 and 1 cells respectively
+nko = subset(nko, idents=setdiff(levels(nko), c('L5 CPN 2','L5 CStrPN','L6b Subplate')))  # exclude clusters with very few cells (14, 5 and 1 cells respectively)
 
 nwt <- CleanClusterNames(nwt)
 nko <- CleanClusterNames(nko)
@@ -58,14 +60,10 @@ ko = merge(mgko, y=c(nko))
 
 # extract raw counts
 ref.counts = ref@assays$RNA@counts
-print(paste0("REF dim: ", dim(ref.counts)))
 wt.counts = wt@assays$RNA@counts
-print(paste0("WT dim: ", dim(wt.counts)))
 ko.counts = ko@assays$RNA@counts
-print(paste0("KO dim: ", dim(ko.counts)))
 
 # normalize
-print("Normalize!")
 ref.norm <- apply(ref.counts, 2, function(x)(x/sum(x))*10000)
 wt.norm <- apply(wt.counts, 2, function(x)(x/sum(x))*10000)
 ko.norm <- apply(ko.counts, 2, function(x)(x/sum(x))*10000)
@@ -84,8 +82,6 @@ rownames(ko.norm) <- ko.hgenes[ko.mgenes]
 
 # drop genes without orthologs
 print("Check genes without ortholog!")
-#wt.norm <- wt.norm[!(is.na(rownames(wt.norm))), ]
-#ko.norm <- ko.norm[!(is.na(rownames(ko.norm))), ]
 ref.naGenes = is.na(rownames(ref.norm))
 if (length(ref.naGenes)>0) {
 cat(paste0("REF: removing ", sum(ref.naGenes), " genes without orthologs...\n"))

@@ -1,13 +1,23 @@
 library(Seurat)
 library(PLIER)
 library(dplyr)
+source("SeuratAnalysis/module_score.R")
+source("SeuratAnalysis/plotting.R")
 
-ref <- readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/paper/seur_P14_final_030221.rds")
+
+# input arguments
+# 1. path to the Seurat object to run PLIER on (e.g. P14 Cx3cr1)
+# 2. Homeostatic Mg signature genes 
+# 	(RDS file with list of Hom1 and Hom2 specific genes - named 'Hom1Final' and 'Hom2Final')
+# 3. path to the Fezf2 control and KO scRNA Seurat dataset
+args = commandArgs(trailingOnly=T)
+
+ref <- readRDS(args[1])
 
 # import genes to use as the prior
-new_homs = readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/Hom_Signature/nebula/mg_hom_state_signature_genes_final.rds")
-genes.hom1 <- new_homs$Hom1Final
-genes.hom2 <- new_homs$Hom2Final
+hom.genes = readRDS(args[2])
+genes.hom1 <- hom.genes$Hom1Final
+genes.hom2 <- hom.genes$Hom2Final
 
 gl.comb = c(genes.hom1, genes.hom2)
 prior = matrix(0L, nrow=length(gl.comb), ncol=2)
@@ -59,6 +69,7 @@ library(stringr)
 # Find the max LV from selected LVs (ones with auc>0.5 and FDR < 0.05)
 pval.cutoff = max(res$summary[res$summary[, 5] <= 0.05, 4])  # fifth col is FDR
 print(paste0("p value cutoff = ", pval.cutoff, " (this gives FDR < 0.05)"))
+# apply AUC cutoff
 selectLV=which(apply(res$Uauc*(res$Up<=pval.cutoff),2,max)>0.7)
 print(selectLV)
 
@@ -87,7 +98,7 @@ pdf("PLIER_REF_gene_loading_sig_LVs.pdf", height=10, width=10)
 wrap_plots(pl, ncol=4)
 dev.off()
 
-cols = readRDS("../colors.rds")
+cols = readRDS("SeuratAnalysis/colors.rds")
 
 # Plot cell loading
 cell.loading = res$B
@@ -96,8 +107,7 @@ rownames(cell.loading) <- paste0("LV", str_split(rownames(cell.loading), ",", si
 lv_scores = as.data.frame(t(cell.loading))
 rownames(lv_scores) <- gsub("\\.", "-", rownames(lv_scores))
 ref <- AddMetaData(ref, lv_scores)
-source("~/kwanho/src/seurat_tools.R")
-plot_feature2(ref, reduction='tsne', features=c('LV1_loading','LV4_loading','LV11_loading'), size=4, title="PLIER cell loading", filename="cell_loading_P14Cx3cr1_data.pdf")
+MyPlotFeature(ref, reduction='tsne', features=c('LV1_loading','LV4_loading','LV11_loading'), size=4, title="PLIER cell loading", filename="cell_loading_P14Cx3cr1_data.pdf")
 
 p1=VlnPlot(ref, features='LV1_loading', idents=c('Homeostatic1', 'Homeostatic2'), cols=cols, pt.size=0) + stat_summary(fun=median, geom='crossbar') + NoLegend()
 #p2=VlnPlot(ref, features='LV2_loading', idents=c('Homeostatic1', 'Homeostatic2'), cols=cols, pt.size=0) + stat_summary(fun=median, geom='crossbar') + NoLegend()
@@ -133,15 +143,16 @@ lvmodule[[paste0(lv, "_module")]] = cur_genes
 #saveRDS(cur_genes, paste0("Hom2_REF_", lv, "_pos_genes_PLIER.rds"))
 }
 
-seur <- readRDS("../seur_final_Fezf2_WTKO_SCT_annotated.rds")
+
+# read Seurat dataset P14 Fezf2 Control and KO dataset
+seur <- readRDS(args[3])
 
 ref <- MyModuleScore(ref, gene.list=lvmodule, save=T, "metadata_P14Cx3cr1_PLIER_module_score.rds")
 seur <- MyModuleScore(seur, gene.list=lvmodule, save=T, "metadata_Fezf2WTKO_PLIER_module_score.rds")
 
 # add our curated mg state signature module score
-sigm = readRDS("../../../Hom_Signature/nebula/mg_hom_state_signature_genes_final.rds")
-ref <- MyModuleScore(ref, gene.list=sigm, save=T, "metadata_P14Cx3cr1_our_final_hom_state_score.rds")
-seur <- MyModuleScore(seur, gene.list=sigm, save=T, "metadata_Fezf2WTKO_our_final_hom_state_score.rds")
+ref <- MyModuleScore(ref, gene.list=hom.genes, save=T, "metadata_P14Cx3cr1_our_final_hom_state_score.rds")
+seur <- MyModuleScore(seur, gene.list=hom.genes, save=T, "metadata_Fezf2WTKO_our_final_hom_state_score.rds")
 
 Idents(seur) <- 'Treat'
 wt <- subset(seur, idents="WT")
@@ -185,34 +196,25 @@ wrap_plots(c(kplist, kplist2), ncol=5)
 dev.off()
 
 
+
+
+
+
 # compute module sig
 # this is done on R v4.0.3
-.libPaths(.libPaths()[2])
 library(Seurat)
 library(dplyr)
 library(tidyr)
 library(lme4)
 library(lmerTest)
 
-ref <- readRDS("/stanley/levin_dr_storage/kwanho/jeff_microglia/paper/seur_P14_final_030221.rds")
-seur <- readRDS("../seur_final_Fezf2_WTKO_SCT_annotated.rds")
+# using the same 'ref' (P14 Cx3cr1-EGFP scRNA) and 'seur' (P14 Fezf2 Control and KO scRNA) 
+# variables and computed module scores from above
 
-ref.meta.plier = readRDS("metadata_P14Cx3cr1_PLIER_module_score.rds")
-ref.meta.hom = readRDS("metadata_P14Cx3cr1_our_final_hom_state_score.rds")
-seur.meta.plier = readRDS("metadata_Fezf2WTKO_PLIER_module_score.rds")
-seur.meta.hom = readRDS("metadata_Fezf2WTKO_our_final_hom_state_score.rds")
-ref.meta = cbind(ref.meta.hom, ref.meta.plier)
-seur.meta = cbind(seur.meta.hom, seur.meta.plier)
-
-ref <- AddMetaData(ref, ref.meta)
-seur <- AddMetaData(seur, seur.meta)
-
+# subset to Hom1 and Hom2
 sref <- subset(ref, idents=c("Homeostatic1", "Homeostatic2"))
 sseur <- subset(seur, idents=c("Homeostatic1", "Homeostatic2"))
 
-dir.create("stats")
-setwd("stats")
-##########################
 # stats on Fezf2 dataset
 for (gt in levels(sseur$Treat)) {
 print(gt)
@@ -259,6 +261,8 @@ print(ret.padj)
 write.table(ret.padj,file=paste0(gt,"_all_module_by_layer_lmm_anova_pvals.tsv"),sep="\t",quote=F,row.names=T)
 
 }
+
+
 ############################
 # layer module score diff between the genotype
 Idents(sseur) <- 'Treat'
@@ -296,6 +300,7 @@ print(ret.padj)
 write.table(ret.padj,file="Fezf2WTKO_CellType_module_score_diff_by_Treat_lmm_anova_pvals.tsv",sep="\t",quote=F,row.names=T)
 
 
+
 ##################################
 # REF data module score stats
 obj <- subset(sref, downsample=min(table(Idents(sref))))
@@ -307,7 +312,7 @@ df$Replicate <- as.factor(df$Replicate)
 
 module_names = colnames(df)[1:5]
 
-# 
+#
 ret=c()
 for (i in 1:5) {
 colnames(df)[i] = "col"

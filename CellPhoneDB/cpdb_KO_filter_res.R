@@ -1,7 +1,11 @@
+# Filter KO Cellphonedb result
+# Need to adjust p values before this step
 library(stringr)
 
-# Filter WT Cellphonedb result
-res_path = "/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/cpdb/KO/out"
+
+# path to a directory containing CellphoneDB result
+args = commandArgs(trailingOnly=T)
+res_path = args[1]
 
 pval_file = file.path(res_path, "adjust_pvalues.txt")
 means_file = file.path(res_path, "means.txt")
@@ -40,7 +44,7 @@ write.table(means, file.path(res_path, "mysig_means.txt"), sep='\t', quote=F, ro
 
 write.table(as.character(pval$interacting_pair), "mysig_pairs_KO.tsv", sep='\t', quote=F, row.names=F, col.names=F)
 
-source("/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/cpdb/src/cpdb_my_dotplot.R")
+source("cpdb_my_dotplot.R")
 my.sep = (length(pn.mg.pairs)+1)/2
 dot_plot(means_path=file.path(res_path, "mysig_means.txt"), pvalues_path=file.path(res_path, "mysig_pvalues.txt"), filename=file.path(res_path, "cpdb_KO_res.pdf"), height=32, width=20, sep.x=my.sep)
 

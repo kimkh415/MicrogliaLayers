@@ -1,13 +1,17 @@
 library(Seurat)
 library(stringr)
 library(dplyr)
-
 options(stringsAsfactors=F)
 
-setwd('/stanley/levin_dr_storage/kwanho/jeff_microglia/data/MerFISH')
+
+# 1. path to MerFISH counts files
+# 2. path to a TSV file with image sizes (width and height) of each sample (row=sample)
+args = commandArgs(trailingOnly=T)
+
+setwd(args[1])
 
 print("Load data!")
-cb = read.csv("VZG123_codebook.csv")
+cb = read.csv("VZG123_codebook.csv")  # Codebook contains gene names
 gene_names = as.character(cb$name)[1:115]
 
 flist = list.files(pattern="^Run")
@@ -15,25 +19,31 @@ print(flist)
 samples = substr(flist, 1, 15)
 tab_list = lapply(flist, FUN=read.csv, header=F)
 
+# data
 counts_list = c()
+# metadata
 z = c()
 area = c()
-third_col = c()
+third_col = c()  # location index
 spatial_x = c()
 spatial_y = c()
 
-dapi_tab = read.table("/home/unix/kwanho/microglia/data/MerFISH/dapi_mosaic/image_size.tsv", sep='\t', header=F)
+# Get image dimensions for each sample
+# Later used to get spatial location of each cell
+dapi_tab = read.table(args[2], sep='\t', header=F)
 dapi_tab$V1 = gsub('Dapi.tif','',dapi_tab$V1)
 colnames(dapi_tab) <- c('sample','nRow','nCol')
 rownames(dapi_tab) <- dapi_tab$sample
 dapi_tab <- dapi_tab %>% select(-sample)
 
+# Function that maps location index of the MerFISH cells to x and y coordinates
 ind2sub <- function(ind, nrow, ncol) {
 coord.x = ((ind-1)%%nrow)+1
 coord.y = floor((ind-1)/nrow) + 1
 return(c(coord.x, coord.y))
 }
 
+# Add x and y coordinates to each cell
 for (i in seq(1,length(flist)-1,2)) {
   print(samples[i])
   
@@ -68,6 +78,7 @@ print(length(area))
 meta = data.frame(z=z, area=area, location=third_col, spatial_x=spatial_x, spatial_y=spatial_y)
 rownames(meta) = colnames(comb_counts)
 
+# Create Seurat object
 seur <- CreateSeuratObject(comb_counts, meta.data=meta)
 seur$run <- substr(colnames(seur), 1, 4)
 seur$slice <- substr(colnames(seur), 5, 10)
@@ -77,4 +88,4 @@ seur$sample <- str_split(colnames(seur), pattern="_", simplify=T)[,1]
 emb <- matrix(cbind(seur$spatial_x, seur$spatial_y*-1), ncol=2, dimnames=list(colnames(seur), c('spatial_1','spatial_2')))
 seur[["spatial"]] <- CreateDimReducObject(embeddings = emb, key = "spatial_", assay = DefaultAssay(seur))
 
-saveRDS(seur, "analysis/final/seur_init.rds")
+saveRDS(seur, "seur_init.rds")

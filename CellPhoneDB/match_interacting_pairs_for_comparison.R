@@ -1,11 +1,19 @@
+# make sure WT and KO results share the same rows (interacting pairs)
+
 library(stringr)
 
-# Filter WT Cellphonedb result
-res_path = "/stanley/levin_dr_storage/kwanho/jeff_microglia/analysis_071321/cpdb/KO/out"
-prefix='KO'
 
-#PN = c('L2_3_CPN_1','L2_3_CPN_2','L2_3_CPN_3','L2_3_CPN_4','L4_Stellate','L5_CPN_1','L5_CPN_2','L5_CStrPN','L5_NP','L5_PT','L6_CPN_1','L6_CPN_2','L6_CThPN_1','L6_CThPN_2','L6b_Subplate')
+# input arguments:
+# 1. path to the CPDB result directory
+# 2. character 'WT' or 'KO'
+args = commandArgs(trailingOnly=T)
+res_path = args[1]
+prefix = args[2]
+
+PN = c('L2_3_CPN_1','L2_3_CPN_2','L2_3_CPN_3','L2_3_CPN_4','L4_Stellate','L5_CPN_1','L5_CPN_2','L5_CStrPN','L5_NP','L5_PT','L6_CPN_1','L6_CPN_2','L6_CThPN_1','L6_CThPN_2','L6b_Subplate')
+if (prefix =='KO') {
 PN = c('L2_3_CPN_1','L2_3_CPN_2','L2_3_CPN_3','L2_3_CPN_4','L4_Stellate','L5_CPN_1','L6_CPN_1','L6_CPN_2','KO_Mismatch_1','KO_Mismatch_2','KO_Mismatch_3','KO_Mismatch_4')
+}
 MG = c('Homeostatic1', 'Homeostatic2')
 
 pval_file = file.path(res_path, "adjust_pvalues.txt")

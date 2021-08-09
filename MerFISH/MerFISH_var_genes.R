@@ -1,3 +1,6 @@
+# Curated genes used in MerFISH
+
+
 var_genes = c(
 "Tmem119",
 "Fcrls",

@@ -1,3 +1,5 @@
+# ordering and grouping of the interacting pairs found to be significant in at least one result
+
 general = c(
 "ACVR_1B2B receptor_GDF1",       # all
 "TNFSF12_TNFRSF25",
